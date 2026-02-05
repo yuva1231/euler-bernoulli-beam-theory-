@@ -20,6 +20,6 @@ where:
 
 ## Documentation
 
-📄 **[Full Project Report (PDF)](euler-bernoulli_beam_theory-analysis_.pdf)**
+📄 **[Full Project Report (PDF)](euler-bernoulli beam theory-analysis.pdf)**
 
 The complete analysis, methodology, results, and mathematical derivations are available in the PDF report generated from `main.tex`.
