@@ -1,0 +1,586 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath} % Required to remove numbers from equations and include matrices
+
+\usepackage{listings} % Required for code
+
+ \usepackage{upquote}% Upright quotes for verbatim code
+ \usepackage{fancyvrb} % verbatim replacement that allows latex
+ \usepackage{inputenc} % Greek symbols
+
+ \usepackage{caption}
+\usepackage{subcaption} % Allow use of seperate subfigure captions
+
+\lstdefinestyle{myStyle}{
+breaklines=true
+}
+\lstset{style=myStyle}
+
+\title{MAT455 Numerical Analysis Project 1 - The Beam Problem}
+\author{Ariana Beeby and Yuva Gottimukala}
+\date{March 8, 2024}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    In this work, we studied the solutions of systems of linear equations by utilizing the beam problem, calculating vertical deflection of a beam of a given length, material and variable cross-sectional shape and endpoint conditions. Specifically, our model represented an aluminum beam that had an annulus or rectangular cross section, and had ends that were fixed and pinned or fixed and free. We then used a discretization of the problem, represented by a pentadiagonal matrix equation, to approximate the vertical deflection across the beam using Gaussian Elimination. Using these approximations as well as the exact solutions, we were able to study the rates of convergence between them. 
+\end{abstract}
+
+\section*{Distribution of Work}
+The distribution of the work was done evenly, with both of us working on the each element together a majority of the time. Ariana completed the Octave codes needed, including the test cases for the Pentadiagonal Gaussian Elimination function, as well as the abstract. Yuva completed the derivation for the Taylor Expansion of the fourth derivative approximation and the Introduction. All other elements were collaboratively worked on between the two of us, including the presentation slides.
+
+\section{Introduction}
+The Euler-Bernoulli beam theory is used to calculate deflection and load bearing characteristics of various beam profiles, which was first used in the development of the Eiffel Tower and the Ferris wheel. This is achieved through deriving a fourth order differential equation to model the vertical deflection of a beam based on its characteristics. In this project, we will be using this theory along with Pentadiagonal Gaussian elimination to be able to solve the resulting matrices to show how annulus and horizontally oriented rectangular beams deflect over various increasing subdivisions of the beams. With this, our goal is to be able to visualize deflection of two different beam profiles and compare results. We will be looking at two different scenarios to be able to see how annulus and horizontal rectangular beams deflect in the fixed - free and fixed - pinned scenarios. For fixed - free, we will have this represented as a beam fixed in a wall at one end at $x=0$,then both $y$ an d$y'$ have to be 0, so $y(0)=y'(0)=0$:
+
+\begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.5]{FixedFree.png}
+    \caption{Fixed free state}
+    \label{fig:FixedFree}
+\end{figure}
+
+
+Fixed - pinned will be represented as one end fixed in place and the other end pinned allowing for rotation but no other movement at that point. This represented mathematically with the boundary conditions, $y(0)=y''(0)=0$:
+\begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.5]{FixedPinned.png}
+    \caption{Fixed pinned state}
+    \label{fig:FixedPinned}
+\end{figure}
+
+\section{Problem Description}
+
+\begin{equation} \label{eq:1}
+    EIy^{(4)}(x) = f(x), 0 \leq x \leq L.
+\end{equation}
+
+In the above equation, $y(x)$ is the vertical deflection of the point at x, E is the materials Young’s modulus. In this project we will be using E = 69 for the material used which is aluminum.  I is the second moment of inertia shown below in equations \ref{eq:RectangleI} and \ref{eq:AnnulusI}, and f is an applied (external) force per unit length. With this f, we will only consider the scenario of the force due to gravity for simplicity and ease of calculations. In which case, $f = −S\rho g$, where $S = bd$ is the area of the cross section, $\rho$ is the mass density of the material, and g is the acceleration due to gravity. As this is the case, exact solutions to the derived beam equations can then be found, and they will be shown in equations (6)–(7) below. With all this being said, we will solve these systems made to compute deflection of annulus and rectangular beams of length $L=10$ meters, compare the approximate solutions to the exact solutions, and study the rates of convergence between them.
+
+\begin{enumerate}
+    \item Rectangular cross section
+    \begin{equation} \label{eq:RectangleS}
+    S = bd
+\end{equation}
+where, $b = 10$ and $d = 5$ centimeters
+\begin{equation} \label{eq:RectangleI}
+    I = (bd^3)/12
+\end{equation}
+\begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.5]{RectangleCrossSection.png}
+    \caption{Rectangular cross section}
+    \label{fig:RectCC}
+\end{figure}
+
+\item Annulus Cross Section 
+\begin{equation} \label{eq:AnnulusS}
+    S = \pi(R^2 - r^2)
+\end{equation}
+where $R =\sqrt{(1250/16\pi)}$ and $r=\sqrt{(450/16\pi)}$ centimeters.
+\begin{equation} \label{eq:AnnulusI}
+    I = (\pi(R^4 - r^4))/4
+\end{equation}
+\end{enumerate}
+
+
+\begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.5]{AnnulusCrossSection.png}
+    \caption{Annulus cross section}
+    \label{fig:AnnulusCC}
+\end{figure}
+
+First we will use the Taylor series expansion to be able to find the error term for estimation, which tells us the rate of convergence. Then, we use the fourth derivative approximation to create our matrices to represent our two scenarios of fixed - free and fixed - pinned. 
+
+\section{Methods}
+\subsection{Taylor Expansion}
+
+We first will algebraically derive the Taylor expansion of $y^{(4)}(x)$, which gives us both a way to discretize the problem and a way to find the rate of convergence of the errors at the fourth derivative. Our goal is to show that there exists a constant $C$ that depends on $f^{(6)}(x)$ such that 
+
+\begin{equation*}
+    y^{(4)}(x_i) = \frac{y_{i-2}-4y_{i-1}+6y_i-4y_{i+1}+y_{i+2}}{h^4} + Ch^2
+\end{equation*}
+
+\begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.15]{2-26-24, 11:06 PM Microsoft Lens}
+    \caption{Taylor Expansion at $h=0$ for fourth derivative approximation}
+    \label{fig:taylor}
+\end{figure}
+
+Through equation combination and the Taylor expansion as seen in Figure \ref{fig:taylor} we find that $C = -\frac{1}{6}f^{(6)}(x)$.
+
+
+\subsection{Pentadiagonal Gaussian Elimination}
+
+Using pseudocode provided in class, we created the function Listing \ref{gauss-elim-penta} that implements naive Gaussian elimination for a pentadiagonal system. To test that the function works correctly, we ran it on the following test matrices where the solution is known:
+\begin{enumerate}
+    \item Test Matrix 1:
+    $\begin{bmatrix}
+        8 & -2 & -1 & 0 & 0 \\
+        -2 & 9 & -4 & -1 & 0 \\
+        -1 & -3 & 7 & -1 & -2 \\
+        0 & 4 & -2 & 12 & -5 \\
+        0 & 0 & -7 & -3 & 15
+    \end{bmatrix}\begin{bmatrix}
+        x_1 \\
+        x_2 \\
+        x_3 \\
+        x_4 \\
+        x_5
+    \end{bmatrix} = \begin{bmatrix}
+        5 \\
+        2 \\
+        0 \\
+        1 \\ 
+        5
+    \end{bmatrix}$
+    \item Test Matrix 2:
+    $\begin{bmatrix}
+         1 & .25 & .25 & 0 & 0 \\
+        .25 & 1 & .25 & .25 & 0 \\
+        .25 & .25 & 1 & .25 & .25 \\
+        0 & .25 & .25 & 1 & .25 \\
+        0 & 0 & .25 & .25 & 1
+    \end{bmatrix} \begin{bmatrix}
+        x_1 \\
+        x_2 \\
+        x_3 \\
+        x_4 \\
+        x_5
+    \end{bmatrix} = \begin{bmatrix}
+        1.5 \\
+        1.75 \\
+        2 \\
+        1.75 \\ 
+        1.5
+    \end{bmatrix}$
+    \item Test Matrix 3:
+    $\begin{bmatrix}
+         3 & 1 & .5 & 0 & 0 \\
+         1 & 3 & 1 & .5 & 0 \\
+        .5 & 1 & 3 & 1 & .5 \\
+        0 & .5 & 1 & 3 & 1 \\
+        0 & 0 & .5 & 1 & 3
+    \end{bmatrix} \begin{bmatrix}
+        x_1 \\
+        x_2 \\
+        x_3 \\
+        x_4 \\
+        x_5
+    \end{bmatrix} = \begin{bmatrix}
+        9 \\
+        11 \\
+        11.5 \\
+        10 \\ 
+        6
+    \end{bmatrix}$
+\end{enumerate}
+The solutions for these matrices are: $x_{m1} = x_{m2} = \begin{bmatrix}
+    1 \\
+    1 \\
+    1 \\
+    1 \\
+    1
+\end{bmatrix}$ and $x_{m3} = \begin{bmatrix}
+    2 \\
+    2 \\
+    2 \\
+    2 \\
+    1
+\end{bmatrix}$. These solutions should be somewhat obvious given the small size of the starting matrices, and our function was able to successfully compute them. 
+
+\subsection{Beam Scenario}
+
+In this problem we will use a simplified model of the one demonstrated in the Euler-Bernoulli Beam Theory~\cite{enwiki:1190108593}. The beam will have a thickness of $d$, a width of $b$, and a length of $L$. The deflections of the beam are seen as a function of the $x$ position along the length of the beam, where $0 \leq x \leq L$, and are modeled by the fourth-ordered differential equation we saw in Equation \ref{eq:1}. We can use this equation in combination with the Taylor expansion found in the previous section to create the system of equations. We will also be using the exact solutions of the constant right hand side $f = -S\rho g$. Both the system of equations and exact solutions are as follows: 
+\begin{enumerate}
+    \item Left end fixed, right end pinned:
+    \begin{equation}
+        y(x) = -\frac{S\rho g}{48EI}x^2(3L^2-5Lx+2x^2)
+    \end{equation}
+    \begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.29]{FixedPinnedMatrix.png}
+    \caption{Fixed - Pinned pentadiagonal matrix}
+    \label{fig:FixedPinnedMatrix}
+\end{figure}
+    \item Left end fixed, right end free:
+    \begin{equation}
+        y(x) = -\frac{S\rho g}{24EI}x^2(6L^2-4Lx+x^2).
+    \end{equation}
+    \begin{figure}[h!]
+    \centering  
+    \includegraphics[scale=.29]{FixedFreeMatrix.png}
+    \caption{Fixed - Free pentadiagonal matrix}
+    \label{fig:FixedFreeMatrix}
+\end{figure}
+\end{enumerate}
+
+
+
+\section{Results}
+
+After running the four tests, with the number of subsections doubling from $n=10$ to $n=1280$, we created plots showing the calculated and actual deflection of the given beam, as well as the absolute error from the results. We then created a table for the maximum absolute error of each $n$ value for each case.
+
+\subsection{Annulus, Fixed-Pinned}
+
+As we can see from Figure \ref{fig:afp}, the annulus beam with a fixed-pinned configuration reached a maximum deflection of about $0.000008$ m or $0.0008$ cm. This is a very small deflection relative to the length of the beam. The location of the maximum being closer to the free end rather than in the middle makes sense with more constructed support from the fixed end.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.6\textwidth]{Figures/AnnulusFixedPinnedErrs.png}
+    \caption{Annulus, Fixed-Pinned maximum absolute errors}
+    \label{fig:afp-abs-err}
+\end{figure}
+
+ We also see from Figure \ref{fig:afp-abs-err} that the maximum absolute errors decrease as the number of sub-intervals increases. The shape of the error curve for each of the n values remains the same, with the peak of the absolute error corresponding with the maximum deflection of the beam.
+
+\subsection{Annulus, Fixed-Free}
+
+With the annulus beam that has a fixed and a free end, we see from Figure \ref{fig:aff} that the deflection steadily increases as the interval gets further from the fixed end, with a maximum deflection of about $-0.2$ cm occurring at the very end of the beam. Again, this is relatively small in relation to the length and cross-section of the beam. The shape of the error curve also is relatively consistent across the interval amounts. However, we note that the trend of the point where the error curve approaches zero occurring around $L=7$ and shifting towards $L=8$ each following n value changes in Figures \ref{fig:aff-n640} and \ref{fig:aff-n1280}. In these iterations, we see that the crossing point jumps to $L=8$ and then back to $L=6$.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.6\textwidth]{Figures/AnnulusFixedFreeErrs.png}
+    \caption{Annulus, Fixed-Free maximum absolute errors}
+    \label{fig:aff-abs-err}
+\end{figure}
+In Figure \ref{fig:aff-abs-err} we see the same trend as the fixed-pinned configuration where the maximum absolute error increases as the number of intervals also increases, but the error begins larger by a degree of just under 2. 
+
+\subsection{Rectangle Version 1, Fixed-Pinned}
+
+The flattened rectangle cross section with the fixed-pinned configuration displays the same shape of deflection as the annulus, seen in Figure \ref{fig:rfp}, but with a greater maximum deflection of 10 cm, which is also 50 times greater than that of the annulus shape with the fixed-free ends. 
+\begin{figure}
+    \centering
+    \includegraphics[width=.6\textwidth]{Figures/RectangFixedPinnedErrs.png}
+    \caption{Rectangle, Fixed-Pinned maximum absolute errors}
+    \label{fig:rfp-abs-err}
+\end{figure}
+
+The shape of the error curve also matches the annulus fixed-pinned curve, with the maximum occurring at around the same point along the length of the beam. However, we get a larger starting maximum absolute error as seen in Figure \ref{fig:rfp-abs-err}. This is about 3 orders of magnitude larger than the annulus fixed-pinned results. 
+
+\subsection{Rectangle Version 1, Fixed-Free}
+
+In the fixed-free configuration we get the greatest deflection of the four cases, which we can see in Figure \ref{fig:rff}. The beam reaches a maximum deflection at around 250 cm, which is equivalent to $\frac{1}{4}$ of the beam's length. This maximum occurs at $L = 10$ which both matches the annulus fixed-free case and what we would expect of a free-hanging beam. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.6\textwidth]{Figures/RectangFixedFreeErrs.png}
+    \caption{Rectangle, Fixed-Free maximum absolute errors}
+    \label{fig:rff-abs-err}
+\end{figure}
+
+The maximum absolute error is also the greatest of the four cases, with the maximum at $n=10$ being .017. We again see the shape of the approximation starting greater then the actual deflection until about $L=7$ and then going under the actual value, which is what the tail of the graph represents. The discrepancy that was mentioned for the fixed-free configuration of the annulus cross-section also occurs with the rectangular shape. 
+
+\section{Analysis}
+
+From our modelling we found that the beam cross section and configuration with the least deflection was the annulus, with a fixed-pinned configuration, followed by the annulus that was fixed-free. This reflects the real world engineering practices, where sign posts and other poles are often hollow to prevent buckling, and flat-wise rectangles are not often used to reinforce structures.
+
+In order to observe the rate of convergence, we must calculate the ratio of the max absolute error for each consecutive iteration, done in Figure \ref{fig:err_ratio}. From this we see that the ratio remains consistent at about $0.25$ for each of the iteration intervals for all cases. Just as we saw a break in the trend for both fixed-free configurations' error graphs, we also see that break in the ratio of maximum absolute errors. Both the annulus and rectangle beams with a fixed-free state see a change to a ratio of about 0.2 in the increase from $n=320$ to $n=640$, and then again changes to 0.5 in the increase from $n=640$ to $n=1280$. This is attributed to the loss of significance compounding through the system of equations seen in Figure \ref{fig:FixedFreeMatrix}. With the ratio being 0.25 for every doubling of the number of intervals, we get a rate of convergence equal to 2, and $O(h^2)$, which matches the expected value calculated in Figure \ref{fig:taylor}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{Figures/Err-Ratio_Table.png}
+    \caption{Maximum absolute error ratios}
+    \label{fig:err_ratio}
+\end{figure}
+
+\section{Conclusion}
+
+Through this work we were successfully able to model the deflection that occurs to an aluminum beam with two different cross-sectional shapes - annulus and rectangular - and two different end-point configurations - left end fixed and right end pinned, and left end fixed and right end free. We saw that with the 2 beam profiles we were focusing on, annulus had significantly less deflection than rectangular. The difference was very significant, firstly looking at the fixed free scenario, annulus only had a deflection of .2 centimeters whereas the rectangle profile deflected 250 centimeters. That is 1,250 times worse than annulus which is indeed a very egregious ratio. Looking at the fixed pinned we see that the annulus profile deflected .0008 centimeters versus the rectangular profiles deflection of 10 centimeters. Here we observe that the ratio is still the same 1,250 when we do $10/.008$. Despite the discrepancy in our differences, the ratio remained the same which we can attribute to our system being consistent as we change the cross section. Also observed was the rate of convergence found from our errors, we see that it agreed with our Taylor series expansion. In both cases, we got the order of convergence being equal to 2 and that is in agreeance with our $O(h^2)$ we showed in figure \ref{fig:taylor}. 
+
+Finally, further studies with this work can be conducted to optimize the proportions of width and height for the rectangular cross section in order to find the least deflection. We could also use the same cross section and fixed-pinned configuration, but try a number of other materials to again minimize maximum deflection. It would also be beneficial to test the model on a beam configuration that is pinned-free, as we would expect the beam to hang vertically down from the pinned point. This would result in an infinite deflection along the length of the beam, and so could result in errors in the current model. 
+
+\section{Extra Credit}
+
+In our conclusion we talked about the need to test the model for the pinned-free configuration. We created another function seen in Listing \ref{extra}. We used the pinned half of the matrices seen previously for the first equations in our model, and then the free equation values for the free end of the model. With this we created the visualizations seen in Figure \ref{fig:rpf}.
+
+We see that when $n=10$, we are for some reason in the positives. However, for n values following that we see the earlier discussed suspected behavior of this scenario where the beam is to hang vertically down from the pinned point. Furthermore, as n gets to 640 and 1280, it goes positive again which is similar to what was observed in our project above. This could be a topic for further investigation.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\section{Appendix}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_1.png}
+        \caption{$n=10$}
+        \label{fig:afp-n10}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_2.png}
+        \caption{$n=20$}
+        \label{fig:afp-n20}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_3.png}
+        \caption{$n=40$}
+        \label{fig:afp-n40}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_4.png}
+        \caption{$n=80$}
+        \label{fig:afp-n80}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_5.png}
+        \caption{$n=160$}
+        \label{fig:afp-n160}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_6.png}
+        \caption{$n=320$}
+        \label{fig:afp-n320}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_7.png}
+        \caption{$n=640$}
+        \label{fig:afp-n640}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_0_8.png}
+        \caption{$n=1280$}
+        \label{fig:afp-n1280}
+    \end{subfigure}
+    \caption{Annulus, Fixed-Pinned deflection and errors}
+    \label{fig:afp}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_1.png}
+        \caption{$n=10$}
+        \label{fig:aff-n10}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_2.png}
+        \caption{$n=20$}
+        \label{fig:aff-n20}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_3.png}
+        \caption{$n=40$}
+        \label{fig:aff-n40}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_4.png}
+        \caption{$n=80$}
+        \label{fig:aff-n80}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_5.png}
+        \caption{$n=160$}
+        \label{fig:aff-n160}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_6.png}
+        \caption{$n=320$}
+        \label{fig:aff-n320}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_7.png}
+        \caption{$n=640$}
+        \label{fig:aff-n640}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_1_8.png}
+        \caption{$n=1280$}
+        \label{fig:aff-n1280}
+    \end{subfigure}
+    \caption{Annulus, Fixed-Free deflection and errors}
+    \label{fig:aff}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_1.png}
+        \caption{$n=10$}
+        \label{fig:rfp-n10}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_2.png}
+        \caption{$n=20$}
+        \label{fig:rfp-n20}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_3.png}
+        \caption{$n=40$}
+        \label{fig:rfp-n40}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_4.png}
+        \caption{$n=80$}
+        \label{fig:rfp-n80}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_5.png}
+        \caption{$n=160$}
+        \label{fig:rfp-n160}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_6.png}
+        \caption{$n=320$}
+        \label{fig:rfp-n320}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_7.png}
+        \caption{$n=640$}
+        \label{fig:rfp-n640}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_3_8.png}
+        \caption{$n=1280$}
+        \label{fig:rfp-n1280}
+    \end{subfigure}
+    \caption{Rectangle v. 1, Fixed-Pinned deflection and errors}
+    \label{fig:rfp}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_1.png}
+        \caption{$n=10$}
+        \label{fig:rff-n10}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_2.png}
+        \caption{$n=20$}
+        \label{fig:rff-n20}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_3.png}
+        \caption{$n=40$}
+        \label{fig:rff-n40}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_4.png}
+        \caption{$n=80$}
+        \label{fig:rff-n80}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_5.png}
+        \caption{$n=160$}
+        \label{fig:rff-n160}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_6.png}
+        \caption{$n=320$}
+        \label{fig:rff-n320}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_7.png}
+        \caption{$n=640$}
+        \label{fig:rff-n640}
+    \end{subfigure}
+     \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Figures/output_2_8.png}
+        \caption{$n=1280$}
+        \label{fig:rff-n1280}
+    \end{subfigure}
+    \caption{Rectangle v. 1, Fixed-Free deflection and errors}
+    \label{fig:rff}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{Figures/extra.png}
+    \caption{Rectangle v. 1, Pinned-Free estimated deflection}
+    \label{fig:rpf}
+\end{figure}
+
+\begin{lstinputlisting}[language=Octave, caption=Pentadiagonal Gaussian Elimination function, label=gauss-elim-penta]{GaussElimPenta.m}
+
+\end{lstinputlisting}
+
+\begin{lstinputlisting}[language=Octave, caption=Annulus Fixed and Pinned beam function, label=annulus-fixed-pinned]{AnnulusAlumFixedPinned.m}
+    
+\end{lstinputlisting}
+
+\begin{lstinputlisting}[language=Octave, caption=Annulus Fixed and Free beam function, label=annulus-fixed-free]{AnnulusAlumFixedFree.m}
+    
+\end{lstinputlisting}
+
+\begin{lstinputlisting}[language=Octave, caption=Rectangle Fixed and Pinned beam function, label=rectangle-fixed-pinned]{Rectang1AlumFixedPinned.m}
+    
+\end{lstinputlisting}
+
+\begin{lstinputlisting}[language=Octave, caption=Rectangle Fixed and Free beam function, label=rectangle-fixed-free]{Rectang1AlumFixedFree.m}
+    
+\end{lstinputlisting}
+
+\begin{lstinputlisting}[language=Octave, caption=Case Testing Driver, label = driver]{Driver.m}
+    
+\end{lstinputlisting}
+
+\begin{lstinputlisting}[language=Octave, caption=Rectangle pinned and free beam function, label=extra]{Rectang1AlumPinnedFree.m}
+    
+\end{lstinputlisting}
+
+\end{document}
