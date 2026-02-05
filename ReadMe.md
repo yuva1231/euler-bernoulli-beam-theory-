@@ -20,6 +20,6 @@ where:
 euler-bernoulli beam theory-analysis 
 ## Documentation
 
-📄 **[Full Project Report (PDF)](euler-bernoulli-beam-theory-analysis.pdf)**
+**[Full Project Report (PDF)](euler-bernoulli-beam-theory-analysis.pdf)**
 
 The complete analysis, methodology, results, and mathematical derivations are available in the PDF report generated from `main.tex`.
